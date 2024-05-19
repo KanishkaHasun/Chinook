@@ -7,12 +7,15 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContextFactory<ChinookContext>(opt => opt.UseSqlite(connectionString));
+//builder.Services.AddDbContextFactory<ChinookContext>(opt => opt.UseSqlite(connectionString));
+
+builder.Services.AddDbContext<ChinookContext>(opt => opt.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<ChinookUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ChinookContext>();
 
+builder.Services.AddChinookServices(); 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 

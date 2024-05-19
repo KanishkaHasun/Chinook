@@ -3,8 +3,11 @@
 
 @using Chinook.Models
 @using Chinook.ClientModels
+@using Chinook.Services
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
+@inject IArtistService ArtistService
+@inject ITrackService TrackService
 
 @if (!string.IsNullOrWhiteSpace(InfoMessage))
 {
@@ -83,8 +86,68 @@ else
         <button class="btn btn-success" @onclick="AddTrackToPlaylist">Save</button>
     </Footer>
 </Modal>
-
 @code {
+    [Parameter] public long ArtistId { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+   
+    private Modal PlaylistDialog { get; set; }
+
+    private Models.Artist Artist;
+    private List<PlaylistTrack> Tracks;
+    private PlaylistTrack SelectedTrack;
+    private string InfoMessage;
+    private string? CurrentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+
+        CurrentUserId = await ArtistService.GetUserIdAsync();
+        Artist = await ArtistService.GetArtistAsync(ArtistId);
+        Tracks = await TrackService.GetTracksForArtistAsync(ArtistId, CurrentUserId.ToString());
+    }
+
+
+    private void FavoriteTrack(long trackId)
+    {
+        var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
+
+        // TODO: add track to Favorites playlist
+
+        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
+    }
+
+    private void UnfavoriteTrack(long trackId)
+    {
+        var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
+
+        // TODO: remove track from Favorites playlist
+
+        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist Favorites.";
+    }
+
+    private void OpenPlaylistDialog(long trackId)
+    {
+        CloseInfoMessage();
+        SelectedTrack = Tracks.FirstOrDefault(t => t.TrackId == trackId);
+        PlaylistDialog.Open();
+    }
+
+    private void AddTrackToPlaylist()
+    {
+        // TODO
+
+        CloseInfoMessage();
+        InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {{playlist name}}.";
+        PlaylistDialog.Close();
+    }
+
+    private void CloseInfoMessage()
+    {
+        InfoMessage = "";
+    }
+}
+@* @code {
     [Parameter] public long ArtistId { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
     [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
@@ -162,4 +225,4 @@ else
     {
         InfoMessage = "";
     }
-}
+} *@
