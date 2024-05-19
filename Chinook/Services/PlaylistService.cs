@@ -48,6 +48,26 @@ namespace Chinook.Services
             return playlist;
         }
 
-     
+        public async Task<Models.Playlist> GetOrCreateFavoritesPlaylistAsync(string userId)
+        {
+            var playlist = await _dbContext.Playlists
+                .Include(p => p.Tracks)
+                .Include(p => p.UserPlaylists)
+                .FirstOrDefaultAsync(p => p.Name == "My favorite tracks" && p.UserPlaylists.Any(up => up.UserId == userId));
+
+            if (playlist == null)
+            {
+                playlist = new Models.Playlist
+                {
+                    Name = "My favorite tracks",
+                    UserPlaylists = new List<Models.UserPlaylist> { new Models.UserPlaylist { UserId = userId } }
+                };
+                _dbContext.Playlists.Add(playlist);
+                await _dbContext.SaveChangesAsync();
+            }
+
+            return playlist;
+        }
+
     }
 }

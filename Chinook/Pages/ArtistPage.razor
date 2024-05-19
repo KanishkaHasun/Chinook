@@ -89,7 +89,7 @@ else
 @code {
     [Parameter] public long ArtistId { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-   
+
     private Modal PlaylistDialog { get; set; }
 
     private Models.Artist Artist;
@@ -108,11 +108,11 @@ else
     }
 
 
-    private void FavoriteTrack(long trackId)
+    private async Task FavoriteTrack(long trackId)
     {
         var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
 
-        // TODO: add track to Favorites playlist
+        await TrackService.FavoriteTrackAsync(trackId, CurrentUserId);
 
         InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
     }
