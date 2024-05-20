@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.CodeAnalysis.Elfie.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Chinook.Services
 {
@@ -15,39 +17,93 @@ namespace Chinook.Services
             _authenticationState = authenticationState;
 
         }
-       
-        public async Task<List<Models.Artist>> GetArtistsAsync()
+
+        public async Task<List<Models.Artist>?> GetArtistsAsync()
         {
-            return await _dbContext.Artists.ToListAsync();
-        }
-      
-        public async Task<Models.Artist> GetArtistAsync(long artistId)
-        {
-            var artist = await _dbContext.Artists.SingleOrDefaultAsync(a => a.ArtistId == artistId);
-            if (artist == null)
+            try
             {
-                throw new Exception($"Artist with ID {artistId} not found.");
+                return await _dbContext.Artists.ToListAsync();
             }
-            return artist;
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
+            }
+
         }
-        public async Task<List<ClientModels.Artist>> GetArtistsWithAlbumCount()
+
+        public async Task<Models.Artist?> GetArtistAsync(long artistId)
         {
-            return await _dbContext.Artists
-                .Select(a => new ClientModels.Artist
+            try
+            {
+                return await _dbContext.Artists.SingleOrDefaultAsync(a => a.ArtistId == artistId);
+
+            }
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
+            }
+        }
+        public async Task<List<ClientModels.Artist>?> GetArtistsWithAlbumCount()
+        {
+            try
+            {
+                return await _dbContext.Artists.Select(a => new ClientModels.Artist
                 {
                     ArtistId = a.ArtistId,
                     Name = a.Name,
                     AlbumCount = a.Albums.Count()
                 })
-                .ToListAsync();
-        }
+              .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
+            }
 
+        }
 
         public async Task<string?> GetUserIdAsync()
         {
-            var user = (await _authenticationState.GetAuthenticationStateAsync())?.User;
-            var userId = user?.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-            return userId;
+            try
+            {
+                var user = (await _authenticationState.GetAuthenticationStateAsync())?.User;
+                var userId = user?.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+                return userId;
+            }
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
+            }
+
+        }
+
+        public async Task<List<ClientModels.Artist>?> SearchByNameAsync(string searchQuery)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    return await _dbContext.Artists
+                        .Where(a => EF.Functions.Like(a.Name, $"%{searchQuery}%")).Select(a => new ClientModels.Artist
+                        {
+                            ArtistId = a.ArtistId,
+                            Name = a.Name,
+                            AlbumCount = a.Albums.Count()
+                        })
+              .ToListAsync();
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
+            }
+          
         }
 
     }

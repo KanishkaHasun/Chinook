@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Chinook.Services
 {
-    public class PlaylistService:IPlaylistService
+    public class PlaylistService : IPlaylistService
     {
         private readonly ChinookContext _dbContext;
         public PlaylistService(ChinookContext dbContext)
@@ -12,11 +12,9 @@ namespace Chinook.Services
         }
         public async Task<Playlist?> GetPlaylistAsync(long playlistId, string userId)
         {
-            Playlist? playlist = null;
-
             try
             {
-                playlist = await _dbContext.Playlists
+                return await _dbContext.Playlists
                     .Include(a => a.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
                     .Where(p => p.PlaylistId == playlistId)
                     .Select(p => new Playlist()
@@ -35,38 +33,45 @@ namespace Chinook.Services
                     })
                     .FirstOrDefaultAsync();
 
-                if (playlist == null)
-                {
-                    throw new Exception($"Playlist with ID {playlistId} not found.");
-                }
+
             }
             catch (Exception ex)
             {
                 // Need to log the exception
+                return null;
             }
 
-            return playlist;
         }
 
-        public async Task<Models.Playlist> GetOrCreateFavoritesPlaylistAsync(string userId)
+        public async Task<Models.Playlist?> GetOrCreateFavoritesPlaylistAsync(string userId)
         {
-            var playlist = await _dbContext.Playlists
-                .Include(p => p.Tracks)
-                .Include(p => p.UserPlaylists)
-                .FirstOrDefaultAsync(p => p.Name == "My favorite tracks" && p.UserPlaylists.Any(up => up.UserId == userId));
-
-            if (playlist == null)
+            try
             {
-                playlist = new Models.Playlist
+                var playlist = await _dbContext.Playlists
+            .Include(p => p.Tracks)
+            .Include(p => p.UserPlaylists)
+            .FirstOrDefaultAsync(p => p.Name == "My favorite tracks" && p.UserPlaylists.Any(up => up.UserId == userId));
+
+                if (playlist == null)
                 {
-                    Name = "My favorite tracks",
-                    UserPlaylists = new List<Models.UserPlaylist> { new Models.UserPlaylist { UserId = userId } }
-                };
-                _dbContext.Playlists.Add(playlist);
-                await _dbContext.SaveChangesAsync();
+                    playlist = new Models.Playlist
+                    {
+                        Name = "My favorite tracks",
+                        UserPlaylists = new List<Models.UserPlaylist> { new Models.UserPlaylist { UserId = userId } }
+                    };
+                    _dbContext.Playlists.Add(playlist);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                return playlist;
+            }
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
             }
 
-            return playlist;
+
         }
 
     }

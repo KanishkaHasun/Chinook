@@ -16,6 +16,10 @@
 }
 else
 {
+    <h4>Search for Artist</h4>
+
+    <input type="text" @oninput="SearchByName" placeholder="Enter artist name" />
+
     <table class="table table-striped table-hover table-sm">
         <thead>
             <tr>
@@ -37,10 +41,28 @@ else
 
 @code {
     private List<Artist>? Artists;
-
+    private List<Artist>? searchResults;
+    
     protected override async Task OnInitializedAsync() {
         await InvokeAsync(StateHasChanged);
         Artists = await ArtistService.GetArtistsWithAlbumCount();
+    }
+
+    private async Task SearchByName(ChangeEventArgs e)
+    {
+       string searchQuery = e.Value.ToString();
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            Artists = await ArtistService.SearchByNameAsync(searchQuery);
+        }
+        else
+        {
+            Artists = await ArtistService.GetArtistsWithAlbumCount();
+
+        }
+        await InvokeAsync(StateHasChanged);
+
     }
 
 }

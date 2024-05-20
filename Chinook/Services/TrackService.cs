@@ -12,52 +12,82 @@ namespace Chinook.Services
             _dbContext = dbContext;
             _playlistService = playlistService;
         }
-        public async Task<List<PlaylistTrack>> GetTracksForArtistAsync(long artistId, string currentUserId)
+        public async Task<List<PlaylistTrack>?> GetTracksForArtistAsync(long artistId, string currentUserId)
         {
-            return await _dbContext.Tracks
-                .Where(t => t.Album.ArtistId == artistId)
-                .Include(t => t.Album)
-                .Select(t => new PlaylistTrack
+            try
+            {
+                return await _dbContext.Tracks
+             .Where(t => t.Album.ArtistId == artistId)
+             .Include(t => t.Album)
+             .Select(t => new PlaylistTrack
+             {
+                 AlbumTitle = (t.Album == null ? "-" : t.Album.Title),
+                 TrackId = t.TrackId,
+                 TrackName = t.Name,
+                 IsFavorite = t.Playlists
+                     .Any(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name == "My favorite tracks"))
+             })
+             .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                //need to log
+                return null;
+            }
+
+        }
+      
+        public async Task<bool> FavoriteTrackAsync(long trackId, string userId)
+        {
+            try
+            {
+                var playlist = await _playlistService.GetOrCreateFavoritesPlaylistAsync(userId);
+
+                if (playlist != null && !playlist.Tracks.Any(pt => pt.TrackId == trackId))
                 {
-                    AlbumTitle = (t.Album == null ? "-" : t.Album.Title),
-                    TrackId = t.TrackId,
-                    TrackName = t.Name,
-                    IsFavorite = t.Playlists
-                        .Any(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name == "Favorites"))
-                })
-                .ToListAsync();
-        }
-        public async Task FavoriteTrackAsync(long trackId, string userId)
-        {
-            var playlist = await _playlistService.GetOrCreateFavoritesPlaylistAsync(userId);
-
-            if (!playlist.Tracks.Any(pt => pt.TrackId == trackId))
+                        var track = await _dbContext.Tracks.FindAsync(trackId);
+                        if (track != null)
+                        {
+                            playlist.Tracks.Add(track);
+                            await _dbContext.SaveChangesAsync();
+                            return true;
+                        }
+                }
+                return false;
+            }
+            catch (Exception ex)
             {
-                playlist.Tracks.Add(new Models.Track { TrackId = trackId });
-                await _dbContext.SaveChangesAsync();
+                // I need to log this
+                return false;
+            }
+        }
+        public async Task<bool> UnfavoriteTrackAsync(long trackId, string userId)
+        {
+            try
+            {
+                var playlist = await _playlistService.GetOrCreateFavoritesPlaylistAsync(userId);
+
+                if (playlist != null)
+                {
+                    var playlistTrack = playlist.Tracks.FirstOrDefault(pt => pt.TrackId == trackId);
+
+                    if (playlistTrack != null)
+                    {
+                        playlist.Tracks.Remove(playlistTrack);
+                        await _dbContext.SaveChangesAsync();
+                        return true;
+                    }
+
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                // Need to log this
+                return false;
             }
         }
 
-        public async Task UnfavoriteTrackAsync(long trackId, string userId)
-        {
-
-            var playlist = await _playlistService.GetOrCreateFavoritesPlaylistAsync(userId);
-
-            var playlistTrack = playlist.Tracks.FirstOrDefault(pt => pt.TrackId == trackId);
-            if (playlistTrack != null)
-            {
-                playlist.Tracks.Remove(playlistTrack);
-                await _dbContext.SaveChangesAsync();
-            }
-        }
-
-        public async Task RemoveTrackAsync(long trackId)
-        {
-            // Implement remove track logic
-        }
-      
-
-      
 
     }
 }
